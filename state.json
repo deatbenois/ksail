@@ -1,66 +1,40 @@
 {
-  "last_run": "2026-04-20T01:03:00Z",
-  "workflow_run_id": "24643620381",
-  "monthly_activity_issue": 3605,
-  "code_quality_domain": "test",
-  "open_repo_assist_prs": [
-    {
-      "branch": "repo-assist/fix-kwok-csi-certmanager-guards-4e9a7b",
-      "description": "fix(setup): add KWOK guards for CSI and cert-manager installation",
-      "fixes": [4192],
-      "created": "2026-04-20"
-    }
-  ],
+  "last_run": "2026-04-20T12:00:00Z",
+  "workflow_run_id": "24667020472",
   "commented_issues": {
+    "4091": "2026-04-20",
     "4192": "2026-04-20",
     "4171": "2026-04-19",
     "4135": "2026-04-19",
     "4119": "2026-04-18",
     "4086": "2026-04-17",
     "4090": "2026-04-17",
-    "4091": "2026-04-17",
     "4068": "2026-04-17"
   },
-  "labelled_issues": {},
-  "backlog_cursor": {
-    "issue_labelling": 4192,
-    "issue_investigation": 4192,
-    "roadmap": "2026-04-18"
+  "open_prs": {
+    "4176": "fix KWOK guards (CNI + stability + LB detection)",
+    "4193": "fix(setup): KWOK CSI and cert-manager guards",
+    "4174": "fix(ci): benchmark awk deduplication",
+    "perf-detector-list-releases": "perf(detector): single ListReleases call (this run)"
   },
-  "fix_attempts": {
-    "4192": {
-      "branch": "repo-assist/fix-kwok-csi-certmanager-guards-4e9a7b",
-      "status": "open",
-      "layer": "CSI + cert-manager guards"
-    }
-  },
-  "task_run_timestamps": {
-    "task_1": "2026-04-16",
-    "task_2": "2026-04-20",
-    "task_3": "2026-04-20",
-    "task_4": "2026-04-14",
-    "task_5": "2026-04-16",
-    "task_6": "2026-04-20",
-    "task_7": "2026-04-17",
-    "task_8": "2026-04-19",
-    "task_9": "2026-04-15",
-    "task_10": "2026-04-16",
-    "task_11": "2026-04-18",
-    "task_12": "2026-04-20",
-    "task_13": "2026-04-20"
-  },
-  "notes": [
-    "PR #4153 (perf: skip scanner.Text() allocation) merged 2026-04-19",
-    "PR #4176 (Copilot: KWOK CNI+stability+LB guards) passes all CI - ready to merge",
-    "PR #4176 and our new CSI/certmgr PR address #4192 in two layers - can merge in either order",
-    "PRs #4150 #4158 #4159 are older Copilot KWOK fix attempts; superseded by #4176",
-    "Issue #3912: Dependabot multi-arch blocked on upstream dependabot-core#14691",
-    "Issue #3917: harden-runner blocked on step-security/harden-runner#627",
-    "Issue #3772: loft-sh/log replace directive blocked on upstream",
-    "Issue #2261: VCluster D-Bus blocked on upstream fix",
-    "Issue #4071: protected-files prevented CI retry PR - still open",
-    "Issue #4085: parent for KWOK cascading CI failures - #4192 now linked as sub-issue",
-    "applyDistributionSpecOverrides already normalizes PolicyEngine/Flux/LoadBalancer for KWOK; now also normalizes CSI/CertManager",
-    "Go 1.26.2 as of go.mod"
-  ]
+  "last_code_quality_domain": "performance",
+  "issue_backlog_cursor": "4091",
+  "labels_applied": {
+    "3605": ["automation"],
+    "3983": ["automation"],
+    "3984": ["automation"],
+    "4067": ["automation", "ci"],
+    "4071": ["automation"],
+    "4084": ["automation", "ci"],
+    "4085": ["automation", "ci"],
+    "4091": ["automation", "ci"],
+    "4135": ["automation", "ci"],
+    "4137": ["automation"],
+    "4138": ["automation"],
+    "4139": ["automation"],
+    "4172": ["automation", "ci"],
+    "4189": ["automation", "ci"],
+    "4192": ["automation", "ci"],
+    "4195": ["automation", "ci"]
+  }
 }
