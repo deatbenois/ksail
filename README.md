@@ -12,7 +12,7 @@
 
 ![ksail](./docs/src/assets/ksail-cli-dark.png)
 
-KSail bundles common Kubernetes tooling into a single binary. Spin up local clusters, deploy workloads, and operate cloud-native stacks across distributions and providers through a CLI, VS Code extension, AI chat TUI, or MCP server — with **only Docker required**.
+KSail bundles common Kubernetes tooling into a single binary. Spin up local clusters, deploy workloads, and operate cloud-native stacks across distributions and providers through a CLI, VS Code extension, AI chat TUI, or MCP server — with **only Docker or access to a Cloud Provider required**.
 
 📖 **Full documentation:** <https://ksail.devantler.tech>
 
