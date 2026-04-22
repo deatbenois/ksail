@@ -63,7 +63,12 @@ func resolveKeyFilePath(sops v1alpha1.SOPS) (string, error) {
 // expandHomePath expands a leading "~/" in the path to the user's home directory.
 func expandHomePath(path string) (string, error) {
 	if path == "~" {
-		return os.UserHomeDir()
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("expand home directory: %w", err)
+		}
+
+		return homeDir, nil
 	}
 
 	if strings.HasPrefix(path, "~/") {

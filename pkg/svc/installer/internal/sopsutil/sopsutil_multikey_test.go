@@ -19,57 +19,26 @@ import (
 func TestExtractAllAgeKeys(t *testing.T) {
 	t.Parallel()
 
+	const (
+		key1 = "AGE-SECRET-KEY-1ABCDEF0000000000000000000000000000000000000000000000000"
+		key2 = "AGE-SECRET-KEY-FIRST000000000000000000000000000000000000000000000000"
+		key3 = "AGE-SECRET-KEY-SECOND00000000000000000000000000000000000000000000000"
+		key4 = "AGE-SECRET-KEY-THIRD000000000000000000000000000000000000000000000000"
+	)
+
 	tests := []struct {
 		name  string
 		input string
 		want  []string
 	}{
-		{
-			name:  "single key",
-			input: "AGE-SECRET-KEY-1ABCDEF0000000000000000000000000000000000000000000000000",
-			want: []string{
-				"AGE-SECRET-KEY-1ABCDEF0000000000000000000000000000000000000000000000000",
-			},
-		},
-		{
-			name: "multiple keys with metadata",
-			input: "# created: 2024-01-01T00:00:00Z\n# public key: age1abc\n" +
-				"AGE-SECRET-KEY-FIRST000000000000000000000000000000000000000000000000\n" +
-				"# created: 2024-06-01T00:00:00Z\n# public key: age1def\n" +
-				"AGE-SECRET-KEY-SECOND00000000000000000000000000000000000000000000000\n",
-			want: []string{
-				"AGE-SECRET-KEY-FIRST000000000000000000000000000000000000000000000000",
-				"AGE-SECRET-KEY-SECOND00000000000000000000000000000000000000000000000",
-			},
-		},
-		{
-			name: "three keys",
-			input: "AGE-SECRET-KEY-FIRST000000000000000000000000000000000000000000000000\n" +
-				"AGE-SECRET-KEY-SECOND00000000000000000000000000000000000000000000000\n" +
-				"AGE-SECRET-KEY-THIRD000000000000000000000000000000000000000000000000\n",
-			want: []string{
-				"AGE-SECRET-KEY-FIRST000000000000000000000000000000000000000000000000",
-				"AGE-SECRET-KEY-SECOND00000000000000000000000000000000000000000000000",
-				"AGE-SECRET-KEY-THIRD000000000000000000000000000000000000000000000000",
-			},
-		},
-		{
-			name:  "empty input",
-			input: "",
-			want:  nil,
-		},
-		{
-			name:  "no keys",
-			input: "# just comments\n# nothing here",
-			want:  nil,
-		},
-		{
-			name:  "key with whitespace trimmed",
-			input: "  AGE-SECRET-KEY-1ABCDEF0000000000000000000000000000000000000000000000000  ",
-			want: []string{
-				"AGE-SECRET-KEY-1ABCDEF0000000000000000000000000000000000000000000000000",
-			},
-		},
+		{"single key", key1, []string{key1}},
+		{"multiple keys with metadata",
+			"# comment\n" + key2 + "\n# comment\n" + key3 + "\n",
+			[]string{key2, key3}},
+		{"three keys", key2 + "\n" + key3 + "\n" + key4 + "\n", []string{key2, key3, key4}},
+		{"empty input", "", nil},
+		{"no keys", "# just comments\n# nothing here", nil},
+		{"key with whitespace trimmed", "  " + key1 + "  ", []string{key1}},
 	}
 
 	for _, tc := range tests {
