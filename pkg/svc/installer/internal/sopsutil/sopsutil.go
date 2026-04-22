@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"filippo.io/age"
@@ -33,6 +32,11 @@ var ErrSOPSKeyNotFound = errors.New(
 	"SOPS is enabled but no Age key found",
 )
 
+// ErrNoMatchingAgeKey indicates public keys were configured but no matching private key was found.
+var ErrNoMatchingAgeKey = errors.New(
+	"no private key matches the configured public keys",
+)
+
 // resolveEnvVarName returns the environment variable name to use for the Age key.
 // Priority: sops.Env.Var (if set) > sops.AgeKeyEnvVar (backward compat).
 func resolveEnvVarName(sops v1alpha1.SOPS) string {
@@ -49,7 +53,12 @@ func resolveEnvVarName(sops v1alpha1.SOPS) string {
 // Expands a leading "~/" to the user's home directory.
 func resolveKeyFilePath(sops v1alpha1.SOPS) (string, error) {
 	if sops.Extract.File != "" {
-		return expandHomePath(sops.Extract.File)
+		expanded, err := fsutil.ExpandHomePath(sops.Extract.File)
+		if err != nil {
+			return "", fmt.Errorf("expand extract file path: %w", err)
+		}
+
+		return expanded, nil
 	}
 
 	p, err := fsutil.SOPSAgeKeyPath()
@@ -58,29 +67,6 @@ func resolveKeyFilePath(sops v1alpha1.SOPS) (string, error) {
 	}
 
 	return p, nil
-}
-
-// expandHomePath expands a leading "~/" in the path to the user's home directory.
-func expandHomePath(path string) (string, error) {
-	if path == "~" {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return "", fmt.Errorf("expand home directory: %w", err)
-		}
-
-		return homeDir, nil
-	}
-
-	if strings.HasPrefix(path, "~/") {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			return "", fmt.Errorf("expand home directory: %w", err)
-		}
-
-		return filepath.Join(homeDir, path[2:]), nil
-	}
-
-	return path, nil
 }
 
 // ResolveEnabledAgeKey checks the SOPS configuration and resolves the
@@ -216,7 +202,8 @@ func filterAndJoin(allKeys, publicKeys []string) (string, error) {
 	}
 
 	if len(filtered) == 0 {
-		return "", nil
+		return "", fmt.Errorf("%w (checked %d private keys against %d public keys)",
+			ErrNoMatchingAgeKey, len(allKeys), len(publicKeys))
 	}
 
 	return strings.Join(filtered, "\n"), nil
@@ -251,15 +238,24 @@ func ExtractAllAgeKeys(input string) []string {
 
 // FilterKeysByPublicKeys filters private keys to only those whose derived
 // public key matches one of the given public keys. Uses age.ParseX25519Identity
-// to derive the public key from each private key.
+// to derive the public key from each private key. Empty entries in publicKeys
+// are silently skipped.
 func FilterKeysByPublicKeys(privateKeys, publicKeys []string) ([]string, error) {
 	if len(privateKeys) == 0 || len(publicKeys) == 0 {
 		return nil, nil
 	}
 
 	pubKeySet := make(map[string]struct{}, len(publicKeys))
+
 	for _, pk := range publicKeys {
-		pubKeySet[strings.TrimSpace(pk)] = struct{}{}
+		trimmed := strings.TrimSpace(pk)
+		if trimmed != "" {
+			pubKeySet[trimmed] = struct{}{}
+		}
+	}
+
+	if len(pubKeySet) == 0 {
+		return nil, nil
 	}
 
 	var matched []string
