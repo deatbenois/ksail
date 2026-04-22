@@ -62,13 +62,17 @@ func resolveKeyFilePath(sops v1alpha1.SOPS) (string, error) {
 
 // expandHomePath expands a leading "~/" in the path to the user's home directory.
 func expandHomePath(path string) (string, error) {
-	if strings.HasPrefix(path, "~/") || path == "~" {
+	if path == "~" {
+		return os.UserHomeDir()
+	}
+
+	if strings.HasPrefix(path, "~/") {
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
 			return "", fmt.Errorf("expand home directory: %w", err)
 		}
 
-		return filepath.Join(homeDir, path[1:]), nil
+		return filepath.Join(homeDir, path[2:]), nil
 	}
 
 	return path, nil
@@ -96,6 +100,13 @@ func ResolveEnabledAgeKey(sops v1alpha1.SOPS) (string, error) {
 	if ageKey == "" {
 		if explicitlyEnabled {
 			envVar := resolveEnvVarName(sops)
+
+			if envVar == "" {
+				return "", fmt.Errorf(
+					"%w (env var lookup disabled; checked local key file only)",
+					ErrSOPSKeyNotFound,
+				)
+			}
 
 			return "", fmt.Errorf(
 				"%w (checked env var %q and local key file)",
