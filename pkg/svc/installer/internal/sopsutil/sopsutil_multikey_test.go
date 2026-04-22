@@ -32,9 +32,11 @@ func TestExtractAllAgeKeys(t *testing.T) {
 		want  []string
 	}{
 		{"single key", key1, []string{key1}},
-		{"multiple keys with metadata",
+		{
+			"multiple keys with metadata",
 			"# comment\n" + key2 + "\n# comment\n" + key3 + "\n",
-			[]string{key2, key3}},
+			[]string{key2, key3},
+		},
 		{"three keys", key2 + "\n" + key3 + "\n" + key4 + "\n", []string{key2, key3, key4}},
 		{"empty input", "", nil},
 		{"no keys", "# just comments\n# nothing here", nil},
