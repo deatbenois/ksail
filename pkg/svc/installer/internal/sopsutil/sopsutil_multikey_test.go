@@ -82,7 +82,7 @@ func TestExtractAllAgeKeys(t *testing.T) {
 // FilterKeysByPublicKeys
 // ---------------------------------------------------------------------------
 
-func TestFilterKeysByPublicKeys(t *testing.T) {
+func TestFilterKeysByPublicKeys_EmptyInputs(t *testing.T) {
 	t.Parallel()
 
 	t.Run("empty private keys returns empty", func(t *testing.T) {
@@ -103,65 +103,64 @@ func TestFilterKeysByPublicKeys(t *testing.T) {
 		require.NoError(t, err)
 		assert.Empty(t, result)
 	})
+}
 
-	t.Run("matching key is returned", func(t *testing.T) {
-		t.Parallel()
+func TestFilterKeysByPublicKeys_Matching(t *testing.T) {
+	t.Parallel()
 
-		// Generate a real age identity for testing.
-		identity, err := age.GenerateX25519Identity()
-		require.NoError(t, err)
+	identity, err := age.GenerateX25519Identity()
+	require.NoError(t, err)
 
-		privKey := identity.String()
-		pubKey := identity.Recipient().String()
+	privKey := identity.String()
+	pubKey := identity.Recipient().String()
 
-		result, filterErr := sopsutil.FilterKeysByPublicKeys(
-			[]string{privKey},
-			[]string{pubKey},
-		)
-		require.NoError(t, filterErr)
-		require.Len(t, result, 1)
-		assert.Equal(t, privKey, result[0])
-	})
+	result, filterErr := sopsutil.FilterKeysByPublicKeys(
+		[]string{privKey},
+		[]string{pubKey},
+	)
+	require.NoError(t, filterErr)
+	require.Len(t, result, 1)
+	assert.Equal(t, privKey, result[0])
+}
 
-	t.Run("non-matching key is excluded", func(t *testing.T) {
-		t.Parallel()
+func TestFilterKeysByPublicKeys_NonMatching(t *testing.T) {
+	t.Parallel()
 
-		identity, err := age.GenerateX25519Identity()
-		require.NoError(t, err)
+	identity, err := age.GenerateX25519Identity()
+	require.NoError(t, err)
 
-		other, err := age.GenerateX25519Identity()
-		require.NoError(t, err)
+	other, err := age.GenerateX25519Identity()
+	require.NoError(t, err)
 
-		result, filterErr := sopsutil.FilterKeysByPublicKeys(
-			[]string{identity.String()},
-			[]string{other.Recipient().String()},
-		)
-		require.NoError(t, filterErr)
-		assert.Empty(t, result)
-	})
+	result, filterErr := sopsutil.FilterKeysByPublicKeys(
+		[]string{identity.String()},
+		[]string{other.Recipient().String()},
+	)
+	require.NoError(t, filterErr)
+	assert.Empty(t, result)
+}
 
-	t.Run("mixed keys filters correctly", func(t *testing.T) {
-		t.Parallel()
+func TestFilterKeysByPublicKeys_MixedKeys(t *testing.T) {
+	t.Parallel()
 
-		id1, err := age.GenerateX25519Identity()
-		require.NoError(t, err)
+	id1, err := age.GenerateX25519Identity()
+	require.NoError(t, err)
 
-		id2, err := age.GenerateX25519Identity()
-		require.NoError(t, err)
+	id2, err := age.GenerateX25519Identity()
+	require.NoError(t, err)
 
-		id3, err := age.GenerateX25519Identity()
-		require.NoError(t, err)
+	id3, err := age.GenerateX25519Identity()
+	require.NoError(t, err)
 
-		// Only include public key for id1 and id3, not id2.
-		result, filterErr := sopsutil.FilterKeysByPublicKeys(
-			[]string{id1.String(), id2.String(), id3.String()},
-			[]string{id1.Recipient().String(), id3.Recipient().String()},
-		)
-		require.NoError(t, filterErr)
-		require.Len(t, result, 2)
-		assert.Equal(t, id1.String(), result[0])
-		assert.Equal(t, id3.String(), result[1])
-	})
+	// Only include public key for id1 and id3, not id2.
+	result, filterErr := sopsutil.FilterKeysByPublicKeys(
+		[]string{id1.String(), id2.String(), id3.String()},
+		[]string{id1.Recipient().String(), id3.Recipient().String()},
+	)
+	require.NoError(t, filterErr)
+	require.Len(t, result, 2)
+	assert.Equal(t, id1.String(), result[0])
+	assert.Equal(t, id3.String(), result[1])
 }
 
 // ---------------------------------------------------------------------------
