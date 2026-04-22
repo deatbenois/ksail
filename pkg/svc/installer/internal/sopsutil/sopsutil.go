@@ -255,17 +255,17 @@ func FilterKeysByPublicKeys(privateKeys, publicKeys []string) ([]string, error) 
 	}
 
 	if len(pubKeySet) == 0 {
-		return nil, nil
+		return privateKeys, nil
 	}
 
 	var matched []string
 
-	for _, privKey := range privateKeys {
+	for i, privKey := range privateKeys {
 		trimmed := strings.TrimSpace(privKey)
 
 		identity, err := age.ParseX25519Identity(trimmed)
 		if err != nil {
-			return nil, fmt.Errorf("parse private key: %w", err)
+			return nil, fmt.Errorf("parse private key at index %d: %w", i, err)
 		}
 
 		derivedPubKey := identity.Recipient().String()
