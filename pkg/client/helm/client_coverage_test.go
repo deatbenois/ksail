@@ -153,8 +153,10 @@ func TestListReleases_ReturnsAllNamespaces(t *testing.T) {
 		if req.URL.Path == "/version" {
 			resp.Header().Set("Content-Type", "application/json")
 			_, _ = fmt.Fprint(resp, `{"major":"1","minor":"29","gitVersion":"v1.29.0"}`)
+
 			return
 		}
+
 		http.NotFound(resp, req)
 	}))
 	t.Cleanup(srv.Close)
