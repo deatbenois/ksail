@@ -643,10 +643,10 @@ func TestDetectComponents_ListReleasesRBACFallback(t *testing.T) {
 }
 
 // TestDetectComponents_ArgoCD_MultiNamespace is a regression test for the Helm
-// v4 AllNamespaces scoping bug (introduced in PR #4199, fixed by correct
-// actionConfig re-init). ArgoCD is installed in the "argocd" namespace, not
-// "default" — if ListReleases only returns releases from a single namespace,
-// ArgoCD will be missed and DetectComponents will incorrectly return GitOpsEngineNone.
+// v4 AllNamespaces scoping bug, which is fixed by correctly re-initializing
+// actionConfig. ArgoCD is installed in the "argocd" namespace, not "default"
+// — if ListReleases only returns releases from a single namespace, ArgoCD
+// will be missed and DetectComponents will incorrectly return GitOpsEngineNone.
 func TestDetectComponents_ArgoCD_MultiNamespace(t *testing.T) {
 	t.Parallel()
 
