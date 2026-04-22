@@ -27,7 +27,9 @@ func TestExtractAllAgeKeys(t *testing.T) {
 		{
 			name:  "single key",
 			input: "AGE-SECRET-KEY-1ABCDEF0000000000000000000000000000000000000000000000000",
-			want:  []string{"AGE-SECRET-KEY-1ABCDEF0000000000000000000000000000000000000000000000000"},
+			want: []string{
+				"AGE-SECRET-KEY-1ABCDEF0000000000000000000000000000000000000000000000000",
+			},
 		},
 		{
 			name: "multiple keys with metadata",
@@ -64,7 +66,9 @@ func TestExtractAllAgeKeys(t *testing.T) {
 		{
 			name:  "key with whitespace trimmed",
 			input: "  AGE-SECRET-KEY-1ABCDEF0000000000000000000000000000000000000000000000000  ",
-			want:  []string{"AGE-SECRET-KEY-1ABCDEF0000000000000000000000000000000000000000000000000"},
+			want: []string{
+				"AGE-SECRET-KEY-1ABCDEF0000000000000000000000000000000000000000000000000",
+			},
 		},
 	}
 
@@ -167,13 +171,15 @@ func TestFilterKeysByPublicKeys_MixedKeys(t *testing.T) {
 // ResolveAgeKey: env.var override
 // ---------------------------------------------------------------------------
 
-//nolint:paralleltest // Uses t.Setenv
 func TestResolveAgeKey_EnvVarOverride(t *testing.T) {
 	const testKey = "AGE-SECRET-KEY-1ENVVAR00000000000000000000000000000000000000000000000000"
 
 	t.Run("env.var takes priority over ageKeyEnvVar", func(t *testing.T) {
 		t.Setenv("TEST_SOPSUTIL_ENV_VAR_NEW", testKey)
-		t.Setenv("TEST_SOPSUTIL_ENV_VAR_OLD", "AGE-SECRET-KEY-1OLDVAR00000000000000000000000000000000000000000000000000")
+		t.Setenv(
+			"TEST_SOPSUTIL_ENV_VAR_OLD",
+			"AGE-SECRET-KEY-1OLDVAR00000000000000000000000000000000000000000000000000",
+		)
 		noKeyFileEnv(t)
 
 		sops := v1alpha1.SOPS{
@@ -202,7 +208,6 @@ func TestResolveAgeKey_EnvVarOverride(t *testing.T) {
 // ResolveAgeKey: extract.file override
 // ---------------------------------------------------------------------------
 
-//nolint:paralleltest // Uses t.Setenv
 func TestResolveAgeKey_ExtractFileOverride(t *testing.T) {
 	const testKey = "AGE-SECRET-KEY-1CUSTOM00000000000000000000000000000000000000000000000000"
 
@@ -229,7 +234,6 @@ func TestResolveAgeKey_ExtractFileOverride(t *testing.T) {
 // ResolveAgeKey: multi-key file returns all keys
 // ---------------------------------------------------------------------------
 
-//nolint:paralleltest // Uses t.Setenv
 func TestResolveAgeKey_MultiKeyFileReturnsAll(t *testing.T) {
 	const (
 		key1 = "AGE-SECRET-KEY-FIRST000000000000000000000000000000000000000000000000"
