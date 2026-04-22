@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"filippo.io/age"
 	"github.com/devantler-tech/ksail/v7/pkg/apis/cluster/v1alpha1"
 	"github.com/devantler-tech/ksail/v7/pkg/svc/installer/internal/sopsutil"
 	"github.com/stretchr/testify/assert"
@@ -84,11 +85,6 @@ func TestExtractAllAgeKeys(t *testing.T) {
 func TestFilterKeysByPublicKeys(t *testing.T) {
 	t.Parallel()
 
-	// Generate a real age identity to get a valid private/public key pair.
-	// We use known test keys that are syntactically valid but not real secrets.
-	// For FilterKeysByPublicKeys, the keys must be parseable by age.ParseX25519Identity.
-	// We test with real age key generation instead.
-
 	t.Run("empty private keys returns empty", func(t *testing.T) {
 		t.Parallel()
 
@@ -106,6 +102,65 @@ func TestFilterKeysByPublicKeys(t *testing.T) {
 		)
 		require.NoError(t, err)
 		assert.Empty(t, result)
+	})
+
+	t.Run("matching key is returned", func(t *testing.T) {
+		t.Parallel()
+
+		// Generate a real age identity for testing.
+		identity, err := age.GenerateX25519Identity()
+		require.NoError(t, err)
+
+		privKey := identity.String()
+		pubKey := identity.Recipient().String()
+
+		result, filterErr := sopsutil.FilterKeysByPublicKeys(
+			[]string{privKey},
+			[]string{pubKey},
+		)
+		require.NoError(t, filterErr)
+		require.Len(t, result, 1)
+		assert.Equal(t, privKey, result[0])
+	})
+
+	t.Run("non-matching key is excluded", func(t *testing.T) {
+		t.Parallel()
+
+		identity, err := age.GenerateX25519Identity()
+		require.NoError(t, err)
+
+		other, err := age.GenerateX25519Identity()
+		require.NoError(t, err)
+
+		result, filterErr := sopsutil.FilterKeysByPublicKeys(
+			[]string{identity.String()},
+			[]string{other.Recipient().String()},
+		)
+		require.NoError(t, filterErr)
+		assert.Empty(t, result)
+	})
+
+	t.Run("mixed keys filters correctly", func(t *testing.T) {
+		t.Parallel()
+
+		id1, err := age.GenerateX25519Identity()
+		require.NoError(t, err)
+
+		id2, err := age.GenerateX25519Identity()
+		require.NoError(t, err)
+
+		id3, err := age.GenerateX25519Identity()
+		require.NoError(t, err)
+
+		// Only include public key for id1 and id3, not id2.
+		result, filterErr := sopsutil.FilterKeysByPublicKeys(
+			[]string{id1.String(), id2.String(), id3.String()},
+			[]string{id1.Recipient().String(), id3.Recipient().String()},
+		)
+		require.NoError(t, filterErr)
+		require.Len(t, result, 2)
+		assert.Equal(t, id1.String(), result[0])
+		assert.Equal(t, id3.String(), result[1])
 	})
 }
 

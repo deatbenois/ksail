@@ -39,6 +39,7 @@ func resolveEnvVarName(sops v1alpha1.SOPS) string {
 		return sops.Env.Var
 	}
 
+	//nolint:staticcheck // SA1019: AgeKeyEnvVar is deprecated but we must read it for backward compat
 	return sops.AgeKeyEnvVar
 }
 
@@ -49,7 +50,12 @@ func resolveKeyFilePath(sops v1alpha1.SOPS) (string, error) {
 		return sops.Extract.File, nil
 	}
 
-	return fsutil.SOPSAgeKeyPath()
+	p, err := fsutil.SOPSAgeKeyPath()
+	if err != nil {
+		return "", fmt.Errorf("determine age key path: %w", err)
+	}
+
+	return p, nil
 }
 
 // ResolveEnabledAgeKey checks the SOPS configuration and resolves the
@@ -94,21 +100,58 @@ func ResolveEnabledAgeKey(sops v1alpha1.SOPS) (string, error) {
 // filtered by SOPS.Extract.PublicKeys.
 // Returns the key(s) as a newline-joined string, or empty if not found.
 func ResolveAgeKey(sops v1alpha1.SOPS) (string, error) {
-	envVar := resolveEnvVarName(sops)
-
-	// Try environment variable first
-	if envVar != "" {
-		if val := os.Getenv(envVar); val != "" {
-			if key := ExtractAgeKey(val); key != "" {
-				return key, nil
-			}
-		}
+	if key := resolveFromEnvVar(sops); key != "" {
+		return key, nil
 	}
 
-	// Try local key file
+	return resolveFromKeyFile(sops)
+}
+
+// resolveFromEnvVar attempts to extract an age key from the configured env var.
+func resolveFromEnvVar(sops v1alpha1.SOPS) string {
+	envVar := resolveEnvVarName(sops)
+	if envVar == "" {
+		return ""
+	}
+
+	val := os.Getenv(envVar)
+	if val == "" {
+		return ""
+	}
+
+	return ExtractAgeKey(val)
+}
+
+// resolveFromKeyFile reads all age keys from the configured key file and
+// optionally filters them by the configured public keys.
+func resolveFromKeyFile(sops v1alpha1.SOPS) (string, error) {
+	data, err := readKeyFile(sops)
+	if err != nil {
+		return "", err
+	}
+
+	if data == "" {
+		return "", nil
+	}
+
+	allKeys := ExtractAllAgeKeys(data)
+	if len(allKeys) == 0 {
+		return "", nil
+	}
+
+	if len(sops.Extract.PublicKeys) > 0 {
+		return filterAndJoin(allKeys, sops.Extract.PublicKeys)
+	}
+
+	return strings.Join(allKeys, "\n"), nil
+}
+
+// readKeyFile reads the contents of the configured age key file.
+// Returns ("", nil) if the file does not exist.
+func readKeyFile(sops v1alpha1.SOPS) (string, error) {
 	keyPath, err := resolveKeyFilePath(sops)
 	if err != nil {
-		return "", fmt.Errorf("determine age key path: %w", err)
+		return "", err
 	}
 
 	canonicalKeyPath, err := fsutil.EvalCanonicalPath(keyPath)
@@ -120,8 +163,6 @@ func ResolveAgeKey(sops v1alpha1.SOPS) (string, error) {
 		return "", fmt.Errorf("canonicalize age key path: %w", err)
 	}
 
-	// Canonicalization above resolves symlinks and normalizes
-	// env-derived paths before reading, so gosec G304 is acceptable.
 	//nolint:gosec // G304: canonicalized path from controlled inputs
 	data, err := os.ReadFile(canonicalKeyPath)
 	if err != nil {
@@ -132,26 +173,21 @@ func ResolveAgeKey(sops v1alpha1.SOPS) (string, error) {
 		return "", fmt.Errorf("read age key file: %w", err)
 	}
 
-	allKeys := ExtractAllAgeKeys(string(data))
-	if len(allKeys) == 0 {
+	return string(data), nil
+}
+
+// filterAndJoin filters keys by public keys and joins the result.
+func filterAndJoin(allKeys, publicKeys []string) (string, error) {
+	filtered, err := FilterKeysByPublicKeys(allKeys, publicKeys)
+	if err != nil {
+		return "", fmt.Errorf("filter age keys by public keys: %w", err)
+	}
+
+	if len(filtered) == 0 {
 		return "", nil
 	}
 
-	// Filter by public keys if configured
-	if len(sops.Extract.PublicKeys) > 0 {
-		filtered, filterErr := FilterKeysByPublicKeys(allKeys, sops.Extract.PublicKeys)
-		if filterErr != nil {
-			return "", fmt.Errorf("filter age keys by public keys: %w", filterErr)
-		}
-
-		if len(filtered) == 0 {
-			return "", nil
-		}
-
-		return strings.Join(filtered, "\n"), nil
-	}
-
-	return strings.Join(allKeys, "\n"), nil
+	return strings.Join(filtered, "\n"), nil
 }
 
 // ExtractAgeKey finds and returns the first AGE-SECRET-KEY-... line
@@ -197,14 +233,16 @@ func FilterKeysByPublicKeys(privateKeys, publicKeys []string) ([]string, error) 
 	var matched []string
 
 	for _, privKey := range privateKeys {
-		identity, err := age.ParseX25519Identity(strings.TrimSpace(privKey))
+		trimmed := strings.TrimSpace(privKey)
+
+		identity, err := age.ParseX25519Identity(trimmed)
 		if err != nil {
 			return nil, fmt.Errorf("parse private key: %w", err)
 		}
 
 		derivedPubKey := identity.Recipient().String()
 		if _, ok := pubKeySet[derivedPubKey]; ok {
-			matched = append(matched, privKey)
+			matched = append(matched, trimmed)
 		}
 	}
 

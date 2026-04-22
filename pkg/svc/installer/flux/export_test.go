@@ -154,16 +154,6 @@ func ExtractAgeKey(input string) string {
 	return sopsutil.ExtractAgeKey(input)
 }
 
-// ExtractAllAgeKeys exports sopsutil.ExtractAllAgeKeys for testing.
-func ExtractAllAgeKeys(input string) []string {
-	return sopsutil.ExtractAllAgeKeys(input)
-}
-
-// FilterKeysByPublicKeys exports sopsutil.FilterKeysByPublicKeys for testing.
-func FilterKeysByPublicKeys(privateKeys, publicKeys []string) ([]string, error) {
-	return sopsutil.FilterKeysByPublicKeys(privateKeys, publicKeys)
-}
-
 // BuildSopsAgeSecret exports sopsutil.BuildSopsAgeSecret for testing with the flux-system namespace.
 func BuildSopsAgeSecret(ageKey string) *corev1.Secret {
 	return sopsutil.BuildSopsAgeSecret(fluxclient.DefaultNamespace, ageKey)
