@@ -16,6 +16,16 @@ func ExtractAgeKey(input string) string {
 	return sopsutil.ExtractAgeKey(input)
 }
 
+// ExtractAllAgeKeys exports sopsutil.ExtractAllAgeKeys for testing.
+func ExtractAllAgeKeys(input string) []string {
+	return sopsutil.ExtractAllAgeKeys(input)
+}
+
+// FilterKeysByPublicKeys exports sopsutil.FilterKeysByPublicKeys for testing.
+func FilterKeysByPublicKeys(privateKeys, publicKeys []string) ([]string, error) {
+	return sopsutil.FilterKeysByPublicKeys(privateKeys, publicKeys)
+}
+
 // ResolveAgeKey exports sopsutil.ResolveAgeKey for testing.
 func ResolveAgeKey(sops v1alpha1.SOPS) (string, error) {
 	key, err := sopsutil.ResolveAgeKey(sops)

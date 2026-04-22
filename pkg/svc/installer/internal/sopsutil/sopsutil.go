@@ -8,6 +8,7 @@ import (
 	"os"
 	"strings"
 
+	"filippo.io/age"
 	"github.com/devantler-tech/ksail/v7/pkg/apis/cluster/v1alpha1"
 	"github.com/devantler-tech/ksail/v7/pkg/fsutil"
 	corev1 "k8s.io/api/core/v1"
@@ -31,8 +32,28 @@ var ErrSOPSKeyNotFound = errors.New(
 	"SOPS is enabled but no Age key found",
 )
 
+// resolveEnvVarName returns the environment variable name to use for the Age key.
+// Priority: sops.Env.Var (if set) > sops.AgeKeyEnvVar (backward compat).
+func resolveEnvVarName(sops v1alpha1.SOPS) string {
+	if sops.Env.Var != "" {
+		return sops.Env.Var
+	}
+
+	return sops.AgeKeyEnvVar
+}
+
+// resolveKeyFilePath returns the key file path to use for Age key extraction.
+// Priority: sops.Extract.File (if set) > OS-specific default.
+func resolveKeyFilePath(sops v1alpha1.SOPS) (string, error) {
+	if sops.Extract.File != "" {
+		return sops.Extract.File, nil
+	}
+
+	return fsutil.SOPSAgeKeyPath()
+}
+
 // ResolveEnabledAgeKey checks the SOPS configuration and resolves the
-// Age private key. It respects explicit enable/disable and falls back
+// Age private key(s). It respects explicit enable/disable and falls back
 // to auto-detection. Returns ("", nil) when SOPS should be skipped.
 func ResolveEnabledAgeKey(sops v1alpha1.SOPS) (string, error) {
 	explicitlyEnabled := sops.Enabled != nil && *sops.Enabled
@@ -52,10 +73,12 @@ func ResolveEnabledAgeKey(sops v1alpha1.SOPS) (string, error) {
 
 	if ageKey == "" {
 		if explicitlyEnabled {
+			envVar := resolveEnvVarName(sops)
+
 			return "", fmt.Errorf(
 				"%w (checked env var %q and local key file)",
 				ErrSOPSKeyNotFound,
-				sops.AgeKeyEnvVar,
+				envVar,
 			)
 		}
 
@@ -65,14 +88,17 @@ func ResolveEnabledAgeKey(sops v1alpha1.SOPS) (string, error) {
 	return ageKey, nil
 }
 
-// ResolveAgeKey resolves the Age private key from available sources.
-// Priority: (1) environment variable named by AgeKeyEnvVar, (2) local key file.
-// Returns the extracted AGE-SECRET-KEY-... string, or empty if not found.
-// Returns an error if the key file exists but cannot be read.
+// ResolveAgeKey resolves the Age private key(s) from available sources.
+// Priority: (1) environment variable, (2) local key file.
+// When extracting from a key file, all keys are returned and optionally
+// filtered by SOPS.Extract.PublicKeys.
+// Returns the key(s) as a newline-joined string, or empty if not found.
 func ResolveAgeKey(sops v1alpha1.SOPS) (string, error) {
+	envVar := resolveEnvVarName(sops)
+
 	// Try environment variable first
-	if sops.AgeKeyEnvVar != "" {
-		if val := os.Getenv(sops.AgeKeyEnvVar); val != "" {
+	if envVar != "" {
+		if val := os.Getenv(envVar); val != "" {
 			if key := ExtractAgeKey(val); key != "" {
 				return key, nil
 			}
@@ -80,7 +106,7 @@ func ResolveAgeKey(sops v1alpha1.SOPS) (string, error) {
 	}
 
 	// Try local key file
-	keyPath, err := fsutil.SOPSAgeKeyPath()
+	keyPath, err := resolveKeyFilePath(sops)
 	if err != nil {
 		return "", fmt.Errorf("determine age key path: %w", err)
 	}
@@ -106,11 +132,30 @@ func ResolveAgeKey(sops v1alpha1.SOPS) (string, error) {
 		return "", fmt.Errorf("read age key file: %w", err)
 	}
 
-	return ExtractAgeKey(string(data)), nil
+	allKeys := ExtractAllAgeKeys(string(data))
+	if len(allKeys) == 0 {
+		return "", nil
+	}
+
+	// Filter by public keys if configured
+	if len(sops.Extract.PublicKeys) > 0 {
+		filtered, filterErr := FilterKeysByPublicKeys(allKeys, sops.Extract.PublicKeys)
+		if filterErr != nil {
+			return "", fmt.Errorf("filter age keys by public keys: %w", filterErr)
+		}
+
+		if len(filtered) == 0 {
+			return "", nil
+		}
+
+		return strings.Join(filtered, "\n"), nil
+	}
+
+	return strings.Join(allKeys, "\n"), nil
 }
 
 // ExtractAgeKey finds and returns the first AGE-SECRET-KEY-... line
-// from the input.
+// from the input. Used for single-key extraction (e.g. from env var).
 func ExtractAgeKey(input string) string {
 	for line := range strings.SplitSeq(input, "\n") {
 		line = strings.TrimSpace(line)
@@ -120,6 +165,50 @@ func ExtractAgeKey(input string) string {
 	}
 
 	return ""
+}
+
+// ExtractAllAgeKeys extracts all AGE-SECRET-KEY-... lines from the input.
+func ExtractAllAgeKeys(input string) []string {
+	var keys []string
+
+	for line := range strings.SplitSeq(input, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, AgeSecretKeyPrefix) {
+			keys = append(keys, line)
+		}
+	}
+
+	return keys
+}
+
+// FilterKeysByPublicKeys filters private keys to only those whose derived
+// public key matches one of the given public keys. Uses age.ParseX25519Identity
+// to derive the public key from each private key.
+func FilterKeysByPublicKeys(privateKeys, publicKeys []string) ([]string, error) {
+	if len(privateKeys) == 0 || len(publicKeys) == 0 {
+		return nil, nil
+	}
+
+	pubKeySet := make(map[string]struct{}, len(publicKeys))
+	for _, pk := range publicKeys {
+		pubKeySet[strings.TrimSpace(pk)] = struct{}{}
+	}
+
+	var matched []string
+
+	for _, privKey := range privateKeys {
+		identity, err := age.ParseX25519Identity(strings.TrimSpace(privKey))
+		if err != nil {
+			return nil, fmt.Errorf("parse private key: %w", err)
+		}
+
+		derivedPubKey := identity.Recipient().String()
+		if _, ok := pubKeySet[derivedPubKey]; ok {
+			matched = append(matched, privKey)
+		}
+	}
+
+	return matched, nil
 }
 
 // BuildSopsAgeSecret constructs the Kubernetes Secret for SOPS Age decryption
