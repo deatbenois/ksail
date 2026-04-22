@@ -31,8 +31,8 @@ type SOPSEnv struct {
 
 // SOPSExtract configures extraction of Age private keys from a key file.
 type SOPSExtract struct {
-	// File is the path to the Age key file. Defaults to the OS-specific
-	// SOPS age key path (e.g. ~/.config/sops/age/keys.txt on Linux).
+	// File is the path to the Age key file (absolute or relative to the working directory).
+	// Defaults to the OS-specific SOPS age key path when empty.
 	File string `json:"file,omitzero"`
 	// PublicKeys is a list of Age public keys (age1...) used to select which
 	// private keys to include in the SOPS secret. For each private key in the

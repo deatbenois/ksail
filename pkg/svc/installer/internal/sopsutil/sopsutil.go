@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"filippo.io/age"
@@ -45,9 +46,10 @@ func resolveEnvVarName(sops v1alpha1.SOPS) string {
 
 // resolveKeyFilePath returns the key file path to use for Age key extraction.
 // Priority: sops.Extract.File (if set) > OS-specific default.
+// Expands a leading "~/" to the user's home directory.
 func resolveKeyFilePath(sops v1alpha1.SOPS) (string, error) {
 	if sops.Extract.File != "" {
-		return sops.Extract.File, nil
+		return expandHomePath(sops.Extract.File)
 	}
 
 	p, err := fsutil.SOPSAgeKeyPath()
@@ -56,6 +58,20 @@ func resolveKeyFilePath(sops v1alpha1.SOPS) (string, error) {
 	}
 
 	return p, nil
+}
+
+// expandHomePath expands a leading "~/" in the path to the user's home directory.
+func expandHomePath(path string) (string, error) {
+	if strings.HasPrefix(path, "~/") || path == "~" {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("expand home directory: %w", err)
+		}
+
+		return filepath.Join(homeDir, path[1:]), nil
+	}
+
+	return path, nil
 }
 
 // ResolveEnabledAgeKey checks the SOPS configuration and resolves the
