@@ -241,8 +241,12 @@ func ExtractAllAgeKeys(input string) []string {
 // to derive the public key from each private key. Empty entries in publicKeys
 // are silently skipped.
 func FilterKeysByPublicKeys(privateKeys, publicKeys []string) ([]string, error) {
-	if len(privateKeys) == 0 || len(publicKeys) == 0 {
+	if len(privateKeys) == 0 {
 		return nil, nil
+	}
+
+	if len(publicKeys) == 0 {
+		return privateKeys, nil
 	}
 
 	pubKeySet := make(map[string]struct{}, len(publicKeys))

@@ -68,15 +68,13 @@ func TestFilterKeysByPublicKeys_EmptyInputs(t *testing.T) {
 		assert.Empty(t, result)
 	})
 
-	t.Run("empty public keys returns empty", func(t *testing.T) {
+	t.Run("empty public keys returns all private keys", func(t *testing.T) {
 		t.Parallel()
 
-		result, err := sopsutil.FilterKeysByPublicKeys(
-			[]string{"AGE-SECRET-KEY-1ABCDEF0000000000000000000000000000000000000000000000000"},
-			nil,
-		)
+		keys := []string{"AGE-SECRET-KEY-1ABCDEF0000000000000000000000000000000000000000000000000"}
+		result, err := sopsutil.FilterKeysByPublicKeys(keys, nil)
 		require.NoError(t, err)
-		assert.Empty(t, result)
+		assert.Equal(t, keys, result)
 	})
 }
 
