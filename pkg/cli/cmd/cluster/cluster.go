@@ -2777,7 +2777,7 @@ func runDiagnoseCmd(
 	return nil
 }
 
-
+// runInfoCmd orchestrates the cluster info command flow:
 // 1. Resolve cluster identity (name, provider, kubeconfig)
 // 2. Query provider API for cluster status
 // 3. Attempt kubectl cluster-info
