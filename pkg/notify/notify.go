@@ -272,43 +272,43 @@ func indentMultilineContent(content, indent string) string {
 	}
 
 	// Pre-allocate: at most one indent per newline.
-	var b strings.Builder
+	var builder strings.Builder
 
-	b.Grow(len(content) + strings.Count(content, "\n")*len(indent))
+	builder.Grow(len(content) + strings.Count(content, "\n")*len(indent))
 
 	first := true
 	remaining := content
 
 	for {
-		nl := strings.Index(remaining, "\n")
-		if nl == -1 {
+		newlinePos := strings.Index(remaining, "\n")
+		if newlinePos == -1 {
 			// Last segment (no trailing newline): indent if non-empty and not first.
 			if !first && remaining != "" {
-				b.WriteString(indent)
+				builder.WriteString(indent)
 			}
 
-			b.WriteString(remaining)
+			builder.WriteString(remaining)
 
 			break
 		}
 
-		line := remaining[:nl]
-		remaining = remaining[nl+1:]
+		line := remaining[:newlinePos]
+		remaining = remaining[newlinePos+1:]
 
 		if first {
-			b.WriteString(line)
-			b.WriteByte('\n')
+			builder.WriteString(line)
+			builder.WriteByte('\n')
 
 			first = false
 		} else {
 			if line != "" {
-				b.WriteString(indent)
+				builder.WriteString(indent)
 			}
 
-			b.WriteString(line)
-			b.WriteByte('\n')
+			builder.WriteString(line)
+			builder.WriteByte('\n')
 		}
 	}
 
-	return b.String()
+	return builder.String()
 }
