@@ -3,6 +3,7 @@ package detector
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/devantler-tech/ksail/v7/pkg/apis/cluster/v1alpha1"
 	"github.com/devantler-tech/ksail/v7/pkg/client/helm"
@@ -13,12 +14,25 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
+const (
+	// containerCheckMaxAttempts is the number of attempts for Docker container
+	// existence checks. Docker container state can be momentarily inconsistent
+	// during high container churn (e.g., system tests), so retrying mitigates
+	// false-negative container lookups.
+	containerCheckMaxAttempts = 3
+
+	// containerCheckRetryDelay is the delay between retry attempts for Docker
+	// container existence checks.
+	containerCheckRetryDelay = 1 * time.Second
+)
+
 // ComponentDetector detects installed KSail components by querying the
 // Kubernetes API (Helm releases, Deployments) and Docker daemon.
 type ComponentDetector struct {
 	helmClient   helm.Interface
 	k8sClientset kubernetes.Interface
 	dockerClient dockerclient.APIClient
+	retryDelay   time.Duration
 }
 
 // NewComponentDetector creates a detector with the required clients.
@@ -32,6 +46,7 @@ func NewComponentDetector(
 		helmClient:   helmClient,
 		k8sClientset: k8sClientset,
 		dockerClient: dockerClient,
+		retryDelay:   containerCheckRetryDelay,
 	}
 }
 
@@ -330,9 +345,10 @@ func (d *ComponentDetector) detectLoadBalancer(
 		return v1alpha1.LoadBalancerDefault, nil
 	}
 
-	// Vanilla: check for Docker container
+	// Vanilla: check for Docker container with retry to handle transient
+	// Docker state inconsistency (container visibility gaps during high churn).
 	if distribution == v1alpha1.DistributionVanilla && d.dockerClient != nil {
-		found, err := d.containerExists(ctx, ContainerCloudProviderKind)
+		found, err := d.containerExistsWithRetry(ctx, ContainerCloudProviderKind)
 		if err != nil {
 			return v1alpha1.LoadBalancerDefault, fmt.Errorf(
 				"check cloud-provider-kind container: %w", err,
@@ -358,6 +374,59 @@ func (d *ComponentDetector) detectLoadBalancer(
 	}
 
 	return v1alpha1.LoadBalancerDefault, nil
+}
+
+// containerExistsWithRetry checks if a container exists, retrying up to
+// containerCheckMaxAttempts times with d.retryDelay between each attempt.
+// It returns true as soon as any attempt finds the container. An error is
+// returned only when the final attempt itself fails; errors from earlier
+// attempts that are followed by a successful probe are silently discarded.
+// If the context is cancelled (either while probing or while waiting between
+// retries), the function returns immediately with false (and no error, unless
+// the last probe errored).
+func (d *ComponentDetector) containerExistsWithRetry(
+	ctx context.Context,
+	containerName string,
+) (bool, error) {
+	var lastErr error
+
+	for attempt := 1; attempt <= containerCheckMaxAttempts; attempt++ {
+		found, err := d.containerExists(ctx, containerName)
+		if err != nil {
+			lastErr = err
+		} else {
+			lastErr = nil
+
+			if found {
+				return true, nil
+			}
+		}
+
+		if attempt < containerCheckMaxAttempts {
+			// Check for cancellation before sleeping to avoid a race when
+			// d.retryDelay is zero (both ctx.Done() and a zero timer fire
+			// simultaneously, and Go's select picks randomly between them).
+			select {
+			case <-ctx.Done():
+				return false, lastErr
+			default:
+			}
+
+			timer := time.NewTimer(d.retryDelay)
+
+			select {
+			case <-ctx.Done():
+				if !timer.Stop() {
+					<-timer.C
+				}
+
+				return false, lastErr
+			case <-timer.C:
+			}
+		}
+	}
+
+	return false, lastErr
 }
 
 // detectMetalLB checks for a MetalLB Helm release.
