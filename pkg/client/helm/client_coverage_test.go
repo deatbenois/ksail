@@ -149,13 +149,13 @@ func TestListReleases_ReturnsAllNamespaces(t *testing.T) {
 	t.Setenv("HELM_DRIVER", "memory")
 
 	// Fake Kubernetes API server — only /version is needed for IsReachable().
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(resp http.ResponseWriter, req *http.Request) {
 		if req.URL.Path == "/version" {
-			w.Header().Set("Content-Type", "application/json")
-			_, _ = fmt.Fprint(w, `{"major":"1","minor":"29","gitVersion":"v1.29.0"}`)
+			resp.Header().Set("Content-Type", "application/json")
+			_, _ = fmt.Fprint(resp, `{"major":"1","minor":"29","gitVersion":"v1.29.0"}`)
 			return
 		}
-		http.NotFound(w, req)
+		http.NotFound(resp, req)
 	}))
 	t.Cleanup(srv.Close)
 
