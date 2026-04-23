@@ -1,55 +1,19 @@
-// Package main is the entry point for the KSail application.
 package main
 
 import (
 	"fmt"
-	"io"
 	"os"
-	"runtime/debug"
 
-	"github.com/devantler-tech/ksail/v7/internal/buildmeta"
-	"github.com/devantler-tech/ksail/v7/pkg/cli/cmd"
-	"github.com/devantler-tech/ksail/v7/pkg/notify"
+	"github.com/devantler-tech/ksail/cmd"
 )
 
+// main is the entry point for the ksail CLI tool.
+// ksail is a Kubernetes cluster management tool that simplifies
+// the lifecycle of local and remote Kubernetes clusters using
+// GitOps principles with Flux and k3d.
 func main() {
-	exitCode := runSafely(os.Args[1:], runWithArgs, os.Stderr)
-
-	if exitCode != 0 {
-		os.Exit(exitCode)
+	if err := cmd.Execute(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
 	}
-}
-
-//nolint:nonamedreturns // Named return simplifies panic recovery logic.
-func runSafely(args []string, runner func([]string) int, errWriter io.Writer) (exitCode int) {
-	defer func() {
-		if r := recover(); r != nil {
-			panicMessage := fmt.Sprintf("panic recovered: %v\n%s", r, debug.Stack())
-			notify.WriteMessage(notify.Message{
-				Type:    notify.ErrorType,
-				Content: panicMessage,
-				Writer:  errWriter,
-			})
-
-			exitCode = 1
-		}
-	}()
-
-	exitCode = runner(args)
-
-	return exitCode
-}
-
-func runWithArgs(args []string) int {
-	rootCmd := cmd.NewRootCmd(buildmeta.Version, buildmeta.Commit, buildmeta.Date)
-	rootCmd.SetArgs(args)
-
-	err := cmd.Execute(rootCmd)
-	if err != nil {
-		notify.Errorf(rootCmd.ErrOrStderr(), "%v", err)
-
-		return 1
-	}
-
-	return 0
 }
