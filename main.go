@@ -14,6 +14,9 @@ import (
 //
 // Personal fork: using this for home lab cluster management.
 // See: https://github.com/devantler-tech/ksail for upstream changes.
+//
+// Home lab setup: Raspberry Pi 4 cluster (3 nodes) running k3d.
+// Clusters: homelab-prod, homelab-dev
 func main() {
 	if err := cmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
