@@ -17,9 +17,12 @@ import (
 //
 // Home lab setup: Raspberry Pi 4 cluster (3 nodes) running k3d.
 // Clusters: homelab-prod, homelab-dev
+//
+// Note: exit code 2 reserved for usage errors (set by cobra automatically).
+// Using exit code 1 for all runtime/execution errors.
 func main() {
 	if err := cmd.Execute(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "ksail: %v\n", err)
 		os.Exit(1)
 	}
 }
