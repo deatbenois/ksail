@@ -20,9 +20,11 @@ import (
 //
 // Note: exit code 2 reserved for usage errors (set by cobra automatically).
 // Using exit code 1 for all runtime/execution errors.
+//
+// TODO: look into adding a --dry-run flag upstream for safer homelab ops.
 func main() {
 	if err := cmd.Execute(); err != nil {
-		fmt.Fprintf(os.Stderr, "ksail: %v\n", err)
+		fmt.Fprintf(os.Stderr, "ksail: error: %v\n", err)
 		os.Exit(1)
 	}
 }
