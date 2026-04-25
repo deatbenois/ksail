@@ -22,6 +22,8 @@ import (
 // Using exit code 1 for all runtime/execution errors.
 //
 // TODO: look into adding a --dry-run flag upstream for safer homelab ops.
+// TODO: consider adding --cluster flag shorthand (-c) for faster switching
+//       between homelab-prod and homelab-dev from the terminal.
 func main() {
 	if err := cmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "ksail: error: %v\n", err)
