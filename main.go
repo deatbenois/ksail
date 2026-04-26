@@ -24,6 +24,8 @@ import (
 // TODO: look into adding a --dry-run flag upstream for safer homelab ops.
 // TODO: consider adding --cluster flag shorthand (-c) for faster switching
 //       between homelab-prod and homelab-dev from the terminal.
+// TODO: prefix error output with timestamp for easier log correlation when
+//       running ksail from cron jobs on the Pi.
 func main() {
 	if err := cmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "ksail: error: %v\n", err)
