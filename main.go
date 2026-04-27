@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/devantler-tech/ksail/cmd"
 )
@@ -24,8 +25,6 @@ import (
 // TODO: look into adding a --dry-run flag upstream for safer homelab ops.
 // TODO: consider adding --cluster flag shorthand (-c) for faster switching
 //       between homelab-prod and homelab-dev from the terminal.
-// TODO: prefix error output with timestamp for easier log correlation when
-//       running ksail from cron jobs on the Pi.
 // TODO: look into wrapping os.Exit so tests can intercept it without actually
 //       terminating the test process.
 func main() {
@@ -34,11 +33,12 @@ func main() {
 		// cron job logs which tool produced the error (Pi runs several).
 		// Also write to a log file if KSAIL_LOG_FILE env var is set, so
 		// cron errors are captured without relying on mail delivery.
-		fmt.Fprintf(os.Stderr, "[ksail] error: %v\n", err)
+		timestamp := time.Now().Format("2006-01-02 15:04:05")
+		fmt.Fprintf(os.Stderr, "[ksail] %s error: %v\n", timestamp, err)
 		if logFile := os.Getenv("KSAIL_LOG_FILE"); logFile != "" {
 			if f, ferr := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); ferr == nil {
 				defer f.Close()
-				fmt.Fprintf(f, "[ksail] error: %v\n", err)
+				fmt.Fprintf(f, "[ksail] %s error: %v\n", timestamp, err)
 			}
 		}
 		os.Exit(1)
