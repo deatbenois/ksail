@@ -28,7 +28,9 @@ import (
 //       running ksail from cron jobs on the Pi.
 func main() {
 	if err := cmd.Execute(); err != nil {
-		fmt.Fprintf(os.Stderr, "ksail: error: %v\n", err)
+		// Include the program name in the error output so it's clear in
+		// cron job logs which tool produced the error (Pi runs several).
+		fmt.Fprintf(os.Stderr, "[ksail] error: %v\n", err)
 		os.Exit(1)
 	}
 }
