@@ -37,8 +37,10 @@ func main() {
 		fmt.Fprintf(os.Stderr, "[ksail] %s error: %v\n", timestamp, err)
 		if logFile := os.Getenv("KSAIL_LOG_FILE"); logFile != "" {
 			if f, ferr := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); ferr == nil {
-				defer f.Close()
+				// Note: not using defer here since os.Exit won't run deferred calls.
+				// Write the log entry and close immediately before exiting.
 				fmt.Fprintf(f, "[ksail] %s error: %v\n", timestamp, err)
+				f.Close()
 			}
 		}
 		os.Exit(1)
