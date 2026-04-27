@@ -26,11 +26,21 @@ import (
 //       between homelab-prod and homelab-dev from the terminal.
 // TODO: prefix error output with timestamp for easier log correlation when
 //       running ksail from cron jobs on the Pi.
+// TODO: look into wrapping os.Exit so tests can intercept it without actually
+//       terminating the test process.
 func main() {
 	if err := cmd.Execute(); err != nil {
 		// Include the program name in the error output so it's clear in
 		// cron job logs which tool produced the error (Pi runs several).
+		// Also write to a log file if KSAIL_LOG_FILE env var is set, so
+		// cron errors are captured without relying on mail delivery.
 		fmt.Fprintf(os.Stderr, "[ksail] error: %v\n", err)
+		if logFile := os.Getenv("KSAIL_LOG_FILE"); logFile != "" {
+			if f, ferr := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); ferr == nil {
+				defer f.Close()
+				fmt.Fprintf(f, "[ksail] error: %v\n", err)
+			}
+		}
 		os.Exit(1)
 	}
 }
